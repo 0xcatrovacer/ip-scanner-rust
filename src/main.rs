@@ -1,6 +1,7 @@
 use std::env;
 use std::net::IpAddr;
 use std::str::FromStr;
+use std::process;
 
 struct Arguments {
     flag: String,
@@ -21,7 +22,22 @@ impl Arguments {
         } else {
             let flag = args[1].clone();
             if flag.contains("-h") || flag.contains("help") && args.len() == 2 {
-                println!("Usage: -j to select how many threads you want \r\n -h or -help to how this help message")
+                println!("Usage: -j to select how many threads you want \r\n -h or -help to how this help message");
+                return Err("help");
+            } else if flag.contains("-h") || flag.contains("-help") {
+                return Err("too many arguments");
+            } else if flag.contains("-j") {
+                let ipaddr = match IpAddr::from_str(&args[3]) {
+                    Ok(s) => s,
+                    Err(_) => return Err("not a valid IPADDR: Must be IPV4 or IPV6")
+                };
+                let threads = match args[2].parse::<u16>() {
+                    Ok(s) => s,
+                    Err(_) => return Err("failed to parse thread number")
+                };
+                return Ok(Arguments{threads, flag, ipaddr});
+            } else {
+                return Err("Invalid syntax");
             }
         }
     }
@@ -30,14 +46,16 @@ impl Arguments {
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
-    let flag = args[1].clone();
-    let threads = args[2].clone();
-    let ipaddr = args[3].clone();
-
-    for i in &args {
-        println!("{}", i);
-    }
-
-    println!("{:?}", args);
+    
+    let arguments = Arguments::new(&args).unwrap_or_else(
+        |err| {
+            if err.contains("help") {
+                process::exit(0);
+            } else {
+                eprintln!("{} problem parsing arguments: {}", program, err);
+                process::exit(0);
+            }
+        }
+    );
 }
 
